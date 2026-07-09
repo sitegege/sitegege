@@ -38,7 +38,8 @@ function dispararRelogio() {
 }
 
 // CONTROLADORES DE SESSÃO E AUTH
-// Substitua o listener do login-form por este no seu app.js:
+// ==========================================
+
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -50,23 +51,27 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         .then(() => {
             console.log("Login efetuado com sucesso no Firebase!");
             document.getElementById('login-form').reset();
-            if (typeof activarDashboardPrincipal === "function") {
-                activarDashboardPrincipal();
-            } else if (typeof showDashboard === "function") {
-                showDashboard();
-            }
+            activarDashboardPrincipal(); 
         })
         .catch((error) => {
             console.error("Erro detalhado do Firebase:", error);
             alert("Erro de Autenticação: " + error.message + "\n\nEntrando no modo de testes local para você não ficar travado!");
             
-            // Força a entrada no modo simulado para você conseguir mostrar o site funcionando!
-            if (typeof activarDashboardPrincipal === "function") {
-                activarDashboardPrincipal();
-            } else if (typeof showDashboard === "function") {
-                showDashboard();
-            }
+            // Força a entrada no modo simulado para você ver o painel rodando!
+            activarDashboardPrincipal(); 
         });
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+    signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
+});
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        activarDashboardPrincipal();
+        conectarEscutaServidor();
+    } else {
+        restaurarTelaLogin();
+    }
 });
 document.getElementById('btn-logout').addEventListener('click', () => {
     signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
