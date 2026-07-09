@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy } from "firebase/firestore";
 
-// CONFIGURAÇÃO DO SERVIDOR DO FIREBASE
+// CONFIGURAÇÃO DO SERVIDOR DO FIREBASE (Suas chaves oficiais)
 const firebaseConfig = {
   apiKey: "AIzaSyDAk_m03l6hZcVs7uO25cZFnHQWwkTNgCQ",
   authDomain: "assistenciaana-b65c9.firebaseapp.com",
@@ -37,9 +37,7 @@ function dispararRelogio() {
     setInterval(atualizarHorario, 1000);
 }
 
-// CONTROLADORES DE SESSÃO E AUTH
-// ==========================================
-
+// CONTROLADORES DE SESSÃO E AUTH (Limpos e Corrigidos)
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -56,8 +54,6 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         .catch((error) => {
             console.error("Erro detalhado do Firebase:", error);
             alert("Erro de Autenticação: " + error.message + "\n\nEntrando no modo de testes local para você não ficar travado!");
-            
-            // Força a entrada no modo simulado para você ver o painel rodando!
             activarDashboardPrincipal(); 
         });
 });
@@ -65,21 +61,10 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 document.getElementById('btn-logout').addEventListener('click', () => {
     signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
 });
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        activarDashboardPrincipal();
-        conectarEscutaServidor();
-    } else {
-        restaurarTelaLogin();
-    }
-});
-document.getElementById('btn-logout').addEventListener('click', () => {
-    signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
-});
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        ativarDashboardPrincipal();
+        activarDashboardPrincipal();
         conectarEscutaServidor();
     } else {
         restaurarTelaLogin();
@@ -134,7 +119,6 @@ panelOsForm.addEventListener('submit', async (e) => {
             await updateDoc(doc(db, "ordens_servico", id), pacoteOS);
         }
     } catch {
-        // Fallback do motor Mock
         if (id === '') {
             pacoteOS.id = 'id_' + Date.now();
             pacoteOS.status = 'analise';
@@ -171,14 +155,12 @@ function conectarEscutaServidor() {
 function processarERenderizarDados(listaDeOS) {
     const termoPesquisa = searchInput.value.toLowerCase().trim();
     
-    // Filtragem ativa multicritério
     const dadosFiltrados = listaDeOS.filter(os => {
         return os.cliente.toLowerCase().includes(termoPesquisa) || 
                os.aparelho.toLowerCase().includes(termoPesquisa) || 
                os.numero.toLowerCase().includes(termoPesquisa);
     });
 
-    // Elementos de injeção
     const alvos = {
         analise: document.getElementById('zone-analise'),
         manutencao: document.getElementById('zone-manutencao'),
@@ -187,7 +169,6 @@ function processarERenderizarDados(listaDeOS) {
         entregas: document.getElementById('zone-entregas')
     };
 
-    // Limpeza profunda dos containers
     Object.values(alvos).forEach(container => container.innerHTML = '');
 
     let contadores = { analise: 0, manutencao: 0, finalizado: 0, financeiro: 0, entregas: 0 };
@@ -198,14 +179,12 @@ function processarERenderizarDados(listaDeOS) {
     const anoAtual = new Date().getFullYear();
 
     dadosFiltrados.forEach(os => {
-        // Estatísticas financeiras computadas em cima de tudo
         lucroTotal += os.valor;
         const dataReferencia = new Date(os.dataEntrada + 'T00:00:00');
         if (dataReferencia.getMonth() === mesAtual && dataReferencia.getFullYear() === anoAtual) {
             lucroMensal += os.valor;
         }
 
-        // Construção do fluxo básico estruturado
         if (os.status === 'analise') {
             contadores.analise++;
             alvos.analise.appendChild(criarCardFaseInterativa(os, 'manutencao', 'Mover p/ Manutenção 🔧'));
@@ -217,7 +196,6 @@ function processarERenderizarDados(listaDeOS) {
             alvos.finalizado.appendChild(criarCardFaseInterativa(os, 'arquivado', 'Arquivar Registro'));
         }
 
-        // BLOCO 4: RENDERIZADOR DO CONTROLE FINANCEIRO (Exibição Limpa e Restrita)
         contadores.financeiro++;
         const itemFinanceiro = document.createElement('div');
         itemFinanceiro.className = 'finance-row_item finance-row-item';
@@ -233,7 +211,6 @@ function processarERenderizarDados(listaDeOS) {
         `;
         alvos.financeiro.appendChild(itemFinanceiro);
 
-        // BLOCO EXTRA: DETERMINADOR DE ALERTAS DE ENTREGA (Prazo de 7 dias)
         if (verificarProximidadePrazo(os.prazo) && os.status !== 'arquivado') {
             contadores.entregas++;
             const itemEntrega = document.createElement('div');
@@ -250,7 +227,6 @@ function processarERenderizarDados(listaDeOS) {
         }
     });
 
-    // Sincronização dos Labels e Contadores Globais
     document.getElementById('lbl-lucro-total').innerText = `R$ ${lucroTotal.toFixed(2)}`;
     document.getElementById('lbl-lucro-mensal').innerText = `R$ ${lucroMensal.toFixed(2)}`;
     document.getElementById('lbl-total-servicos').innerText = `${listaDeOS.filter(o => o.status !== 'arquivado').length} Atendimentos`;
@@ -262,7 +238,6 @@ function processarERenderizarDados(listaDeOS) {
     document.getElementById('badge-entregas').innerText = contadores.entregas;
 }
 
-// COMPONENTE VISUAL DO CARD DE ACORDO COM A FASE
 function criarCardFaseInterativa(os, proximaFase, labelBotao) {
     const card = document.createElement('div');
     card.className = `os-interactive-card status-${os.status}`;
@@ -282,7 +257,6 @@ function criarCardFaseInterativa(os, proximaFase, labelBotao) {
         </div>
     `;
 
-    // Ação: Abrir e preencher a pasta de anotações
     card.querySelector('.btn-open-folder').addEventListener('click', () => {
         document.getElementById('form-os-id').value = os.id || '';
         document.getElementById('form-os-numero').value = os.numero;
@@ -300,7 +274,6 @@ function criarCardFaseInterativa(os, proximaFase, labelBotao) {
         osFormModal.style.display = 'flex';
     });
 
-    // Ação: Passar arquivo de fase com 1 clique (Otimizado Mobile)
     if (proximaFase !== 'arquivado') {
         card.querySelector('.btn-advance-phase').addEventListener('click', async () => {
             try {
@@ -324,14 +297,11 @@ function verificarProximidadePrazo(dataLimiteString) {
     return limite >= hoje && limite <= margemSegurança;
 }
 
-// INPUT DE PESQUISA EM TEMPO REAL
 searchInput.addEventListener('input', () => processarERenderizarDados(localDatabaseMock));
 
-// INICIALIZADOR GLOBAL DO SISTEMA
 window.addEventListener('DOMContentLoaded', () => {
     dispararRelogio();
     
-    // Alimentação fictícia inicial para exibição imediata na tela
     localDatabaseMock = [
         { id: '1', numero: '2026-001', cliente: 'Júlia Santos', aparelho: 'Samsung S10', emoji: '📱', senha: 'Desenho em L', valor: 250.00, dataEntrada: new Date().toISOString().split('T')[0], prazo: new Date().toISOString().split('T')[0], defeito: 'Tela quebrada e sem touch', observacoes: 'Aparelho necessita da troca do frontal completo com aro. Cliente aguarda.', status: 'analise' },
         { id: '2', numero: '2026-002', cliente: 'Marcos Almeida', aparelho: 'iPhone 11', emoji: '🍏', senha: 'Sem senha', valor: 450.00, dataEntrada: new Date().toISOString().split('T')[0], prazo: new Date().toISOString().split('T')[0], defeito: 'Bateria descarregando rápido', observacoes: 'Bateria atual está em 71% de saúde. Substituir por peça premium e efetuar ciclo.', status: 'manutencao' }
