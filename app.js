@@ -38,19 +38,36 @@ function dispararRelogio() {
 }
 
 // CONTROLADORES DE SESSÃO E AUTH
+// Substitua o listener do login-form por este no seu app.js:
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
 
+    console.log("Tentando autenticar:", email);
+
     signInWithEmailAndPassword(auth, email, password)
-        .then(() => document.getElementById('login-form').reset())
-        .catch(() => {
-            alert("Modo demonstrativo local carregado! Para nuvem, insira chaves válidas no app.js.");
-            ativarDashboardPrincipal();
+        .then(() => {
+            console.log("Login efetuado com sucesso no Firebase!");
+            document.getElementById('login-form').reset();
+            if (typeof activarDashboardPrincipal === "function") {
+                activarDashboardPrincipal();
+            } else if (typeof showDashboard === "function") {
+                showDashboard();
+            }
+        })
+        .catch((error) => {
+            console.error("Erro detalhado do Firebase:", error);
+            alert("Erro de Autenticação: " + error.message + "\n\nEntrando no modo de testes local para você não ficar travado!");
+            
+            // Força a entrada no modo simulado para você conseguir mostrar o site funcionando!
+            if (typeof activarDashboardPrincipal === "function") {
+                activarDashboardPrincipal();
+            } else if (typeof showDashboard === "function") {
+                showDashboard();
+            }
         });
 });
-
 document.getElementById('btn-logout').addEventListener('click', () => {
     signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
 });
