@@ -1,1 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistência Ana - Painel de Controle OS</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts Nativas para Elegância Formal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Material Icons do Google -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
 
+    <!-- 1. TELA DE LOGIN INICIAL -->
+    <div id="login-screen" class="screen-wrapper active">
+        <div class="login-card">
+            <span class="material-icons security-icon">shield</span>
+            <h1>Assistência Ana</h1>
+            <p class="login-subtitle">Sistema Administrativo de OS 🔐</p>
+            <form id="login-form">
+                <div class="field-box">
+                    <label><i class="material-icons">email</i> E-mail de Acesso</label>
+                    <input type="email" id="login-email" placeholder="ana@assistencia.com" required>
+                </div>
+                <div class="field-box">
+                    <label><i class="material-icons">lock</i> Senha</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-neon-purple">Autenticar no Servidor</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. INTERFACE ESTILO PAINEL ADMINISTRATIVO (PRINCIPAL) -->
+    <div id="main-dashboard" class="screen-wrapper">
+        <header class="main-header">
+            <div class="brand-container">
+                <h1 class="brand-title">Assistência Ana</h1>
+                <div class="brand-line"></div>
+            </div>
+            <div class="meta-container">
+                <div class="live-clock">
+                    <span class="material-icons">schedule</span>
+                    <span id="txt-data-hora">Carregando...</span>
+                </div>
+                <button id="btn-logout" class="btn-logout-panel"><i class="material-icons">power_settings_new</i> Sair</button>
+            </div>
+        </header>
+
+        <main class="panel-container">
+            
+            <!-- SEÇÃO DE COMPUTAÇÃO DE LUCROS & CONTADORES GERAIS -->
+            <section class="metrics-grid">
+                <div class="metric-card card-pink">
+                    <div class="metric-info">
+                        <h3>Lucro Total Acumulado</h3>
+                        <p id="lbl-lucro-total">R$ 0,00</p>
+                    </div>
+                    <span class="material-icons">payments</span>
+                </div>
+                <div class="metric-card card-purple">
+                    <div class="metric-info">
+                        <h3>Lucro Mensal Líquido</h3>
+                        <p id="lbl-lucro-mensal">R$ 0,00</p>
+                    </div>
+                    <span class="material-icons">savings</span>
+                </div>
+                <div class="metric-card card-cyan">
+                    <div class="metric-info">
+                        <h3>Total de Serviços Ativos</h3>
+                        <p id="lbl-total-servicos">0 Atendimentos</p>
+                    </div>
+                    <span class="material-icons">build_circle</span>
+                </div>
+            </section>
+
+            <!-- BARRA DE PESQUISA AVANÇADA POR CLIENTE OU APARELHO -->
+            <section class="search-filter-bar">
+                <span class="material-icons search-icon">search</span>
+                <input type="text" id="search-input" placeholder="Pesquise instantaneamente por Cliente, Aparelho ou Nº de OS...">
+            </section>
+
+            <!-- BOTÃO FLUTUANTE / AÇÃO DE CADASTRO -->
+            <div class="action-trigger-row">
+                <button id="btn-trigger-modal" class="btn-action-create"><span class="material-icons">add_task</span> Cadastrar Nova OS</button>
+            </div>
+
+            <!-- ESTRUTURA DE QUATRO COLUNAS/BLOCOS VERTICAIS -->
+            <div class="vertical-workflow">
+                
+                <!-- BLOCO 1: EM ANÁLISE -->
+                <div class="workflow-column" id="col-analise">
+                    <div class="column-header border-cyan">
+                        <h2><span class="material-icons">assignment_late</span>📋 Em Análise</h2>
+                        <span class="badge-count" id="badge-analise">0</span>
+                    </div>
+                    <div class="card-dropzone" id="zone-analise">
+                        <!-- Injetado Dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- BLOCO 2: EM MANUTENÇÃO -->
+                <div class="workflow-column" id="col-manutencao">
+                    <div class="column-header border-purple">
+                        <h2><span class="material-icons">handyman</span>🔧 Em Manutenção</h2>
+                        <span class="badge-count" id="badge-manutencao">0</span>
+                    </div>
+                    <div class="card-dropzone" id="zone-manutencao">
+                        <!-- Injetado Dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- BLOCO 3: FINALIZADO -->
+                <div class="workflow-column" id="col-finalizado">
+                    <div class="column-header border-pink">
+                        <h2><span class="material-icons">check_circle</span>✅ Finalizado</h2>
+                        <span class="badge-count" id="badge-finalizado">0</span>
+                    </div>
+                    <div class="card-dropzone" id="zone-finalizado">
+                        <!-- Injetado Dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- BLOCO 4: CONTROLE FINANCEIRO -->
+                <div class="workflow-column" id="col-financeiro">
+                    <div class="column-header border-gold">
+                        <h2><span class="material-icons">account_balance_wallet</span>💰 Controle Financeiro</h2>
+                        <span class="badge-count" id="badge-financeiro">0</span>
+                    </div>
+                    <div class="finance-meta-labels">
+                        <span>Título / Cliente</span>
+                        <span>Status / Valor</span>
+                    </div>
+                    <div class="card-dropzone dynamic-finance-list" id="zone-financeiro">
+                        <!-- Exibição limpa restrita -->
+                    </div>
+                </div>
+
+                <!-- BLOCO EXTRA: LISTA DE APARELHOS PARA ENTREGAR -->
+                <div class="workflow-column" id="col-entregas">
+                    <div class="column-header border-green">
+                        <h2><span class="material-icons">notification_important</span> Alertas de Entrega (Esta Semana)</h2>
+                        <span class="badge-count" id="badge-entregas">0</span>
+                    </div>
+                    <div class="card-dropzone" id="zone-entregas">
+                        <!-- Alertas automatizados baseados na data -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- 3. MODAL COMPLETO DE CADASTRO E VISUALIZAÇÃO DE ARQUIVO (PASTA DE NOTAS) -->
+    <div id="os-form-modal" class="modal-overlay">
+        <div class="modal-window">
+            <header class="modal-header-bar">
+                <h2 id="modal-display-title">Formulário de Ordem de Serviço</h2>
+                <span class="material-icons close-modal-btn" id="btn-close-modal">cancel</span>
+            </header>
+            <div class="modal-accent-line"></div>
+            
+            <form id="panel-os-form">
+                <input type="hidden" id="form-os-id">
+                
+                <div class="form-row-grid grid-3">
+                    <div class="input-element">
+                        <label>Número da OS</label>
+                        <input type="text" id="form-os-numero" placeholder="Ex: 2026-001" required>
+                    </div>
+                    <div class="input-element">
+                        <label>Nome do Cliente</label>
+                        <input type="text" id="form-os-cliente" placeholder="Ex: Júlia Santos" required>
+                    </div>
+                    <div class="input-element">
+                        <label>Aparelho Celular</label>
+                        <input type="text" id="form-os-aparelho" placeholder="Ex: Samsung S10" required>
+                    </div>
+                </div>
+
+                <div class="form-row-grid grid-3">
+                    <div class="input-element">
+                        <label>Emoji de Identificação</label>
+                        <select id="form-os-emoji">
+                            <option value="📱">📱 Smartphone Comum</option>
+                            <option value="🍏">🍏 iPhone / Apple</option>
+                            <option value="🤖">🤖 Android / Motorola</option>
+                            <option value="🔌">🔌 Apenas Acessório/Placa</option>
+                            <option value="🔋">🔋 Troca de Bateria</option>
+                        </select>
+                    </div>
+                    <div class="input-element">
+                        <label>Senha do Aparelho</label>
+                        <input type="text" id="form-os-senha" placeholder="Ex: Padrão L ou 1234" required>
+                    </div>
+                    <div class="input-element">
+                        <label>Valor do Lucro Líquido (R$)</label>
+                        <input type="number" id="form-os-valor" step="0.01" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="form-row-grid grid-2">
+                    <div class="input-element">
+                        <label>Data de Entrada</label>
+                        <input type="date" id="form-os-data" required>
+                    </div>
+                    <div class="input-element">
+                        <label>Prazo Limite de Entrega</label>
+                        <input type="date" id="form-os-prazo" required>
+                    </div>
+                </div>
+
+                <div class="input-element">
+                    <label>Defeito Relatado</label>
+                    <input type="text" id="form-os-defeito" placeholder="Ex: Tela quebrada e sem dar touch" required>
+                </div>
+
+                <div class="input-element">
+                    <label>Pasta de Anotações Técnicas / Observações</label>
+                    <textarea id="form-os-observacoes" rows="5" placeholder="Digite aqui todo o histórico do serviço, peças compradas, detalhes internos..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit-form">Gravar Arquivo de Serviço</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SDK Conexão com Firebase via Import Maps -->
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"
+        }
+      }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
