@@ -1,460 +1,318 @@
-/* ARQUITETURA DE DESIGN ULTRA-MODERNO NEON */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Montserrat', sans-serif;
-    -webkit-tap-highlight-color: transparent;
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, orderBy } from "firebase/firestore";
+
+// CONFIGURAÇÃO DO SERVIDOR DO FIREBASE
+const firebaseConfig = {
+    apiKey: "SUA_API_KEY_AQUI",
+    authDomain: "SEU_AUTH_DOMAIN_AQUI",
+    projectId: "SEU_PROJECT_ID_AQUI",
+    storageBucket: "SEU_STORAGE_BUCKET_AQUI",
+    messagingSenderId: "SEU_SENDER_ID_AQUI",
+    appId: "SEU_APP_ID_AQUI"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// MAPEAMENTO DO DOM
+const loginScreen = document.getElementById('login-screen');
+const mainDashboard = document.getElementById('main-dashboard');
+const osFormModal = document.getElementById('os-form-modal');
+const panelOsForm = document.getElementById('panel-os-form');
+const searchInput = document.getElementById('search-input');
+
+let localDatabaseMock = []; // Fallback local seguro para simulação ativa
+
+// RELÓGIO DE DATA E HORA EM TEMPO REAL
+function dispararRelogio() {
+    const atualizarHorario = () => {
+        const agora = new Date();
+        const opcoes = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        document.getElementById('txt-data-hora').innerText = agora.toLocaleString('pt-BR', opcoes);
+    };
+    atualizarHorario();
+    setInterval(atualizarHorario, 1000);
 }
 
-:root {
-    --color-bg-deep: #09030a;
-    --color-surface-panel: #130a18;
-    --color-surface-card: #1c1124;
-    --neon-pink: #ff2a74;
-    --neon-purple: #9d4edd;
-    --neon-cyan: #05d9e8;
-    --neon-green: #00ff88;
-    --formal-gold: #e2b659;
-    --text-pure: #ffffff;
-    --text-muted: #a392ab;
-    --glass-shimmer: rgba(255, 255, 255, 0.02);
+// CONTROLADORES DE SESSÃO E AUTH
+document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    signInWithEmailAndPassword(auth, email, password)
+        .then(() => document.getElementById('login-form').reset())
+        .catch(() => {
+            alert("Modo demonstrativo local carregado! Para nuvem, insira chaves válidas no app.js.");
+            ativarDashboardPrincipal();
+        });
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+    signOut(auth).then(() => restaurarTelaLogin()).catch(() => restaurarTelaLogin());
+});
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        ativarDashboardPrincipal();
+        conectarEscutaServidor();
+    } else {
+        restaurarTelaLogin();
+    }
+});
+
+function activarDashboardPrincipal() {
+    loginScreen.classList.remove('active');
+    mainDashboard.classList.add('active');
 }
 
-body {
-    background-color: var(--color-bg-deep);
-    color: var(--text-pure);
-    min-height: 100vh;
-    overflow-x: hidden;
+function restaurarTelaLogin() {
+    mainDashboard.classList.remove('active');
+    loginScreen.classList.add('active');
 }
 
-/* TIPOGRAFIA FORMAL */
-h1, h2, h3 {
-    font-family: 'Cinzel', serif;
-    letter-spacing: 1px;
+// COMPORTAMENTO DAS JANELAS MODAIS (PASTA DE NOTAS)
+document.getElementById('btn-trigger-modal').addEventListener('click', () => {
+    document.getElementById('form-os-id').value = '';
+    panelOsForm.reset();
+    document.getElementById('form-os-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-display-title').innerText = "📝 Cadastrar Nova Ordem de Serviço";
+    osFormModal.style.display = 'flex';
+});
+
+document.getElementById('btn-close-modal').addEventListener('click', () => osFormModal.style.display = 'none');
+
+// OPERAÇÕES DE PERSISTÊNCIA (CREATE / UPDATE)
+panelOsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const id = document.getElementById('form-os-id').value;
+    const pacoteOS = {
+        numero: document.getElementById('form-os-numero').value,
+        cliente: document.getElementById('form-os-cliente').value,
+        aparelho: document.getElementById('form-os-aparelho').value,
+        emoji: document.getElementById('form-os-emoji').value,
+        senha: document.getElementById('form-os-senha').value,
+        valor: parseFloat(document.getElementById('form-os-valor').value),
+        dataEntrada: document.getElementById('form-os-data').value,
+        prazo: document.getElementById('form-os-prazo').value,
+        defeito: document.getElementById('form-os-defeito').value,
+        observacoes: document.getElementById('form-os-observacoes').value,
+        timestamp: Date.now()
+    };
+
+    try {
+        if (id === '') {
+            pacoteOS.status = 'analise';
+            await addDoc(collection(db, "ordens_servico"), pacoteOS);
+        } else {
+            await updateDoc(doc(db, "ordens_servico", id), pacoteOS);
+        }
+    } catch {
+        // Fallback do motor Mock
+        if (id === '') {
+            pacoteOS.id = 'id_' + Date.now();
+            pacoteOS.status = 'analise';
+            localDatabaseMock.push(pacoteOS);
+        } else {
+            const index = localDatabaseMock.findIndex(o => o.id === id);
+            if (index !== -1) {
+                pacoteOS.id = id;
+                pacoteOS.status = localDatabaseMock[index].status;
+                localDatabaseMock[index] = pacoteOS;
+            }
+        }
+        processarERenderizarDados(localDatabaseMock);
+    }
+    
+    osFormModal.style.display = 'none';
+    panelOsForm.reset();
+});
+
+// ESCUTA EM REAL-TIME VIA FIRESTORE
+function conectarEscutaServidor() {
+    const consulta = query(collection(db, "ordens_servico"), orderBy("timestamp", "desc"));
+    onSnapshot(consulta, (snapshot) => {
+        const dadosNovos = [];
+        snapshot.forEach(doc => dadosNovos.push({ id: doc.id, ...doc.data() }));
+        localDatabaseMock = dadosNovos;
+        processarERenderizarDados(dadosNovos);
+    }, () => {
+        console.log("Servidor Firestore desconectado. Operando localmente.");
+    });
 }
 
-/* SISTEMA DE FLUXO DE TELAS */
-.screen-wrapper {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+// MOTOR DE PROCESSAMENTO, PESQUISA E CÁLCULO FINANCEIRO
+function processarERenderizarDados(listaDeOS) {
+    const termoPesquisa = searchInput.value.toLowerCase().trim();
+    
+    // Filtragem ativa multicritério
+    const dadosFiltrados = listaDeOS.filter(os => {
+        return os.cliente.toLowerCase().includes(termoPesquisa) || 
+               os.aparelho.toLowerCase().includes(termoPesquisa) || 
+               os.numero.toLowerCase().includes(termoPesquisa);
+    });
+
+    // Elementos de injeção
+    const alvos = {
+        analise: document.getElementById('zone-analise'),
+        manutencao: document.getElementById('zone-manutencao'),
+        finalizado: document.getElementById('zone-finalizado'),
+        financeiro: document.getElementById('zone-financeiro'),
+        entregas: document.getElementById('zone-entregas')
+    };
+
+    // Limpeza profunda dos containers
+    Object.values(alvos).forEach(container => container.innerHTML = '');
+
+    let contadores = { analise: 0, manutencao: 0, finalizado: 0, financeiro: 0, entregas: 0 };
+    let lucroTotal = 0;
+    let lucroMensal = 0;
+
+    const mesAtual = new Date().getMonth();
+    const anoAtual = new Date().getFullYear();
+
+    dadosFiltrados.forEach(os => {
+        // Estatísticas financeiras computadas em cima de tudo
+        lucroTotal += os.valor;
+        const dataReferencia = new Date(os.dataEntrada + 'T00:00:00');
+        if (dataReferencia.getMonth() === mesAtual && dataReferencia.getFullYear() === anoAtual) {
+            lucroMensal += os.valor;
+        }
+
+        // Construção do fluxo básico estruturado
+        if (os.status === 'analise') {
+            contadores.analise++;
+            alvos.analise.appendChild(criarCardFaseInterativa(os, 'manutencao', 'Mover p/ Manutenção 🔧'));
+        } else if (os.status === 'manutencao') {
+            contadores.manutencao++;
+            alvos.manutencao.appendChild(criarCardFaseInterativa(os, 'finalizado', 'Concluir Reparo ✅'));
+        } else if (os.status === 'finalizado') {
+            contadores.finalizado++;
+            alvos.finalizado.appendChild(criarCardFaseInterativa(os, 'arquivado', 'Arquivar Registro'));
+        }
+
+        // BLOCO 4: RENDERIZADOR DO CONTROLE FINANCEIRO (Exibição Limpa e Restrita)
+        contadores.financeiro++;
+        const itemFinanceiro = document.createElement('div');
+        itemFinanceiro.className = 'finance-row_item finance-row-item';
+        itemFinanceiro.innerHTML = `
+            <div class="fin-title-info">
+                <h4>${os.emoji} ${os.aparelho}</h4>
+                <p>Cli: ${os.cliente} | OS: ${os.numero}</p>
+            </div>
+            <div class="fin-values-info">
+                <span class="fin-status-badge badge-state-${os.status}">${os.status}</span>
+                <span class="fin-value-text">R$ ${os.valor.toFixed(2)}</span>
+            </div>
+        `;
+        alvos.financeiro.appendChild(itemFinanceiro);
+
+        // BLOCO EXTRA: DETERMINADOR DE ALERTAS DE ENTREGA (Prazo de 7 dias)
+        if (verificarProximidadePrazo(os.prazo) && os.status !== 'arquivado') {
+            contadores.entregas++;
+            const itemEntrega = document.createElement('div');
+            itemEntrega.className = 'delivery-alert-row';
+            const dataExibicao = os.prazo.split('-').reverse().join('/');
+            itemEntrega.innerHTML = `
+                <div>
+                    <h4>${os.emoji} ${os.aparelho} para ${os.cliente}</h4>
+                    <p style="font-size:8.5pt; color:var(--text-muted);">OS: ${os.numero}</p>
+                </div>
+                <span class="delivery-deadline-badge">📅 Entregar: ${dataExibicao}</span>
+            `;
+            alvos.entregas.appendChild(itemEntrega);
+        }
+    });
+
+    // Sincronização dos Labels e Contadores Globais
+    document.getElementById('lbl-lucro-total').innerText = `R$ ${lucroTotal.toFixed(2)}`;
+    document.getElementById('lbl-lucro-mensal').innerText = `R$ ${lucroMensal.toFixed(2)}`;
+    document.getElementById('lbl-total-servicos').innerText = `${listaDeOS.filter(o => o.status !== 'arquivado').length} Atendimentos`;
+
+    document.getElementById('badge-analise').innerText = contadores.analise;
+    document.getElementById('badge-manutencao').innerText = contadores.manutencao;
+    document.getElementById('badge-finalizado').innerText = contadores.finalizado;
+    document.getElementById('badge-financeiro').innerText = contadores.financeiro;
+    document.getElementById('badge-entregas').innerText = contadores.entregas;
 }
 
-.screen-wrapper.active {
-    display: block;
-    opacity: 1;
+// COMPONENTE VISUAL DO CARD DE ACORDO COM A FASE
+function criarCardFaseInterativa(os, proximaFase, labelBotao) {
+    const card = document.createElement('div');
+    card.className = `os-interactive-card status-${os.status}`;
+    card.innerHTML = `
+        <div class="card-meta-top">
+            <span>Nº OS: <strong>${os.numero}</strong></span>
+            <span>Entrada: ${os.dataEntrada.split('-').reverse().join('/')}</span>
+        </div>
+        <div class="card-main-title">${os.emoji} ${os.aparelho} - ${os.cliente}</div>
+        <div class="card-problem-text"><strong>Defeito:</strong> ${os.defeito}</div>
+        <div class="card-control-box">
+            <span class="card-price-display">R$ ${os.valor.toFixed(2)}</span>
+            <div class="card-action-triggers">
+                <button class="btn-small-trigger btn-open-folder"><i class="material-icons">folder_open</i> Ver Pasta</button>
+                ${proximaFase !== 'arquivado' ? `<button class="btn-small-trigger btn-advance-phase"><i class="material-icons">east</i> ${labelBotao}</button>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Ação: Abrir e preencher a pasta de anotações
+    card.querySelector('.btn-open-folder').addEventListener('click', () => {
+        document.getElementById('form-os-id').value = os.id || '';
+        document.getElementById('form-os-numero').value = os.numero;
+        document.getElementById('form-os-cliente').value = os.cliente;
+        document.getElementById('form-os-aparelho').value = os.aparelho;
+        document.getElementById('form-os-emoji').value = os.emoji;
+        document.getElementById('form-os-senha').value = os.senha;
+        document.getElementById('form-os-valor').value = os.valor;
+        document.getElementById('form-os-data').value = os.dataEntrada;
+        document.getElementById('form-os-prazo').value = os.prazo;
+        document.getElementById('form-os-defeito').value = os.defeito;
+        document.getElementById('form-os-observacoes').value = os.observacoes;
+
+        document.getElementById('modal-display-title').innerText = "📂 Pasta de Anotações Técnicas";
+        osFormModal.style.display = 'flex';
+    });
+
+    // Ação: Passar arquivo de fase com 1 clique (Otimizado Mobile)
+    if (proximaFase !== 'arquivado') {
+        card.querySelector('.btn-advance-phase').addEventListener('click', async () => {
+            try {
+                await updateDoc(doc(db, "ordens_servico", os.id), { status: proximaFase });
+            } catch {
+                os.status = proximaFase;
+                processarERenderizarDados(localDatabaseMock);
+            }
+        });
+    }
+
+    return card;
 }
 
-/* CARD DE LOGIN INICIAL */
-#login-screen {
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: radial-gradient(circle at center, #1f0b29 0%, #09030a 100%);
-    padding: 15px;
+function verificarProximidadePrazo(dataLimiteString) {
+    if (!dataLimiteString) return false;
+    const limite = new Date(dataLimiteString + 'T00:00:00');
+    const hoje = new Date();
+    const margemSegurança = new Date();
+    margemSegurança.setDate(hoje.getDate() + 7);
+    return limite >= hoje && limite <= margemSegurança;
 }
 
-.login-card {
-    background: var(--color-surface-panel);
-    width: 100%;
-    max-width: 420px;
-    padding: 35px 25px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 42, 116, 0.4);
-    box-shadow: 0 0 30px rgba(255, 42, 116, 0.15);
-    text-align: center;
-}
+// INPUT DE PESQUISA EM TEMPO REAL
+searchInput.addEventListener('input', () => processarERenderizarDados(localDatabaseMock));
 
-.security-icon {
-    font-size: 45pt;
-    color: var(--neon-pink);
-    margin-bottom: 10px;
-    text-shadow: 0 0 10px var(--neon-pink);
-}
-
-.login-card h1 {
-    font-size: 20pt;
-    font-weight: 800;
-}
-
-.login-subtitle {
-    font-size: 9pt;
-    color: var(--neon-cyan);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 25px;
-}
-
-.field-box {
-    text-align: left;
-    margin-bottom: 18px;
-}
-
-.field-box label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 8.5pt;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-    font-weight: 500;
-}
-
-.field-box label i { font-size: 11pt; color: var(--neon-purple); }
-
-.field-box input {
-    width: 100%;
-    padding: 12px 16px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    color: var(--text-pure);
-    font-size: 10pt;
-    transition: all 0.2s ease;
-}
-
-.field-box input:focus {
-    outline: none;
-    border-color: var(--neon-pink);
-    box-shadow: 0 0 12px rgba(255, 42, 116, 0.3);
-}
-
-.btn-neon-purple {
-    width: 100%;
-    padding: 14px;
-    background: transparent;
-    border: 2px solid var(--neon-purple);
-    border-radius: 8px;
-    color: var(--text-pure);
-    font-weight: 700;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: all 0.2s ease;
-}
-
-.btn-neon-purple:hover {
-    background: var(--neon-purple);
-    box-shadow: 0 0 20px rgba(157, 78, 221, 0.6);
-}
-
-/* PAINEL DE CONTROLE ADMINISTRATIVO */
-.main-header {
-    background: rgba(19, 10, 24, 0.85);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 42, 116, 0.15);
-    padding: 15px 25px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 90;
-}
-
-.brand-title { font-size: 18pt; font-weight: 800; }
-.brand-line { height: 2px; background: linear-gradient(90deg, var(--neon-pink), transparent); margin-top: 2px; }
-
-.meta-container { display: flex; align-items: center; gap: 20px; }
-.live-clock { display: flex; align-items: center; gap: 6px; font-size: 9.5pt; color: var(--neon-cyan); font-weight: 500; }
-.live-clock span { font-size: 13pt; }
-
-.btn-logout-panel {
-    background: transparent;
-    border: 1px solid var(--text-muted);
-    color: var(--text-muted);
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 8.5pt;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.2s ease;
-}
-
-.btn-logout-panel:hover { border-color: var(--neon-pink); color: var(--text-pure); }
-
-.panel-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 25px 15px 80px 15px;
-}
-
-/* GRID DE MÉTRICAS */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 15px;
-    margin-bottom: 25px;
-}
-
-.metric-card {
-    background: var(--color-surface-panel);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.metric-info h3 { font-size: 8.5pt; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
-.metric-info p { font-size: 16pt; font-weight: 700; }
-
-.card-pink { border-right: 4px solid var(--neon-pink); }
-.card-pink span { color: var(--neon-pink); }
-.card-purple { border-right: 4px solid var(--neon-purple); }
-.card-purple span { color: var(--neon-purple); }
-.card-cyan { border-right: 4px solid var(--neon-cyan); }
-.card-cyan span { color: var(--neon-cyan); }
-
-/* FILTRO DE PESQUISA */
-.search-filter-bar {
-    background: var(--color-surface-panel);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    align-items: center;
-    padding: 0 15px;
-    margin-bottom: 20px;
-}
-
-.search-icon { color: var(--text-muted); margin-right: 10px; }
-.search-filter-bar input {
-    width: 100%;
-    padding: 14px 0;
-    background: transparent;
-    border: none;
-    color: var(--text-pure);
-    font-size: 10pt;
-}
-.search-filter-bar input:focus { outline: none; }
-
-.action-trigger-row { margin-bottom: 25px; }
-.btn-action-create {
-    background: rgba(255, 42, 116, 0.08);
-    border: 1px solid var(--neon-pink);
-    color: var(--text-pure);
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 0 10px rgba(255, 42, 116, 0.1);
-}
-.btn-action-create:hover { background: var(--neon-pink); box-shadow: 0 0 15px rgba(255, 42, 116, 0.4); }
-
-/* ORGANIZAÇÃO EM COLUNAS VERTICAIS */
-.vertical-workflow {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-}
-
-.workflow-column {
-    background: var(--color-surface-panel);
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.02);
-}
-
-.column-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.column-header h2 { font-size: 12pt; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.column-header h2 span { font-size: 15pt; }
-
-.badge-count { background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 20px; font-size: 8.5pt; font-weight: 700; }
-
-.border-cyan { color: var(--neon-cyan); }
-.border-purple { color: var(--neon-purple); }
-.border-pink { color: var(--neon-pink); }
-.border-gold { color: var(--formal-gold); }
-.border-green { color: var(--neon-green); }
-
-.card-dropzone {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 50px;
-}
-
-/* CARDS DE CONTEÚDO (MÓDULOS DE OS) */
-.os-interactive-card {
-    background: var(--color-surface-card);
-    border-radius: 10px;
-    padding: 16px;
-    border-left: 4px solid var(--text-muted);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.os-interactive-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(255, 42, 116, 0.15);
-}
-
-/* DETALHE REQUISITADO: Linhas finas de bordas baseadas no status */
-.status-analise { border-left-color: var(--neon-cyan); border-top: 1px solid rgba(5, 217, 232, 0.1); }
-.status-manutencao { border-left-color: var(--neon-purple); border-top: 1px solid rgba(157, 78, 221, 0.1); }
-.status-finalizado { border-left-color: var(--neon-pink); border-top: 1px solid rgba(255, 42, 116, 0.1); }
-
-.card-meta-top { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 8.5pt; color: var(--text-muted); }
-.card-main-title { font-size: 11pt; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-.card-problem-text { font-size: 9.5pt; color: var(--text-muted); margin-bottom: 12px; font-style: italic; }
-
-.card-control-box {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    padding-top: 12px;
-}
-
-.card-price-display { color: var(--neon-green); font-weight: 700; font-size: 11pt; }
-.card-action-triggers { display: flex; gap: 8px; }
-
-.btn-small-trigger {
-    background: rgba(255,255,255,0.04);
-    border: none;
-    color: var(--text-pure);
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 8pt;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.btn-small-trigger i { font-size: 9pt; }
-.btn-advance-phase { background: rgba(255, 42, 116, 0.15); border: 1px solid var(--neon-pink); }
-
-/* CONTROLES E EXIBIÇÕES DO FINANCEIRO (Apenas visualização do essencial) */
-.finance-meta-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 8pt;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    padding: 0 5px 8px 5px;
-    border-bottom: 1px solid rgba(226, 182, 89, 0.2);
-    margin-bottom: 10px;
-}
-
-.finance-row-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(226, 182, 89, 0.02);
-    border: 1px dashed rgba(226, 182, 89, 0.15);
-    padding: 12px;
-    border-radius: 6px;
-}
-
-.fin-title-info h4 { font-size: 10pt; font-weight: 600; }
-.fin-title-info p { font-size: 8.5pt; color: var(--text-muted); }
-.fin-values-info { text-align: right; }
-.fin-status-badge { font-size: 7.5pt; text-transform: uppercase; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block; }
-.badge-state-analise { background: rgba(5, 217, 232, 0.15); color: var(--neon-cyan); }
-.badge-state-manutencao { background: rgba(157, 78, 221, 0.15); color: var(--neon-purple); }
-.badge-state-finalizado { background: rgba(255, 42, 116, 0.15); color: var(--neon-pink); }
-.fin-value-text { color: var(--neon-green); font-weight: 700; font-size: 10.5pt; display: block; }
-
-/* ROW ALERTAS DE ENTREGA */
-.delivery-alert-row {
-    background: rgba(0, 255, 136, 0.04);
-    border-left: 4px solid var(--neon-green);
-    padding: 12px;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.delivery-alert-row h4 { font-size: 10pt; font-weight: 600; }
-.delivery-deadline-badge { background: #000; padding: 4px 8px; border-radius: 4px; font-size: 8pt; color: var(--neon-green); font-weight: 600; }
-
-/* MODAL OVERLAY WINDOW */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(9, 3, 10, 0.85);
-    backdrop-filter: blur(8px);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-    padding: 15px;
-}
-
-.modal-window {
-    background: var(--color-surface-panel);
-    border: 1px solid var(--neon-pink);
-    box-shadow: 0 0 35px rgba(255, 42, 116, 0.2);
-    width: 100%;
-    max-width: 650px;
-    border-radius: 14px;
-    padding: 25px;
-    position: relative;
-    animation: modalSlide 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modalSlide {
-    from { transform: translateY(15px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header-bar { display: flex; justify-content: space-between; align-items: center; }
-.modal-header-bar h2 { font-size: 14pt; font-weight: 700; }
-.close-modal-btn { color: var(--text-muted); cursor: pointer; font-size: 20pt; }
-.close-modal-btn:hover { color: var(--neon-pink); }
-.modal-accent-line { height: 2px; width: 50px; background: var(--neon-pink); margin: 6px 0 20px 0; }
-
-.form-row-grid { display: grid; gap: 15px; margin-bottom: 15px; }
-.grid-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-2 { grid-template-columns: repeat(2, 1fr); }
-
-.input-element { margin-bottom: 15px; display: flex; flex-direction: column; }
-.input-element label { font-size: 8.5pt; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; }
-.input-element input, .input-element select, .input-element textarea {
-    background: rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.08);
-    padding: 12px;
-    border-radius: 6px;
-    color: var(--text-pure);
-    font-size: 9.5pt;
-}
-.input-element input:focus, .input-element select:focus, .input-element textarea:focus { outline: none; border-color: var(--neon-pink); }
-
-.btn-submit-form {
-    width: 100%;
-    padding: 14px;
-    background: var(--neon-pink);
-    border: none;
-    border-radius: 6px;
-    color: var(--text-pure);
-    font-weight: 700;
-    text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(255, 42, 116, 0.3);
-}
-
-/* RESPONSIVIDADE EM DISPOSITIVOS MÓVEIS (SEM TRAVAMENTOS OU QUEBRAS) */
-@media (max-width: 650px) {
-    .grid-3, .grid-2 { grid-template-columns: 1fr; }
-    .main-header { padding: 12px 15px; }
-    .brand-title { font-size: 14pt; }
-    .panel-container { padding: 15px 10px; }
-    .metrics-grid { grid-template-columns: 1fr; }
-}
+// INICIALIZADOR GLOBAL DO SISTEMA
+window.addEventListener('DOMContentLoaded', () => {
+    dispararRelogio();
+    
+    // Alimentação fictícia inicial para exibição imediata na tela
+    localDatabaseMock = [
+        { id: '1', numero: '2026-001', cliente: 'Júlia Santos', aparelho: 'Samsung S10', emoji: '📱', senha: 'Desenho em L', valor: 250.00, dataEntrada: new Date().toISOString().split('T')[0], prazo: new Date().toISOString().split('T')[0], defeito: 'Tela quebrada e sem touch', observacoes: 'Aparelho necessita da troca do frontal completo com aro. Cliente aguarda.', status: 'analise' },
+        { id: '2', numero: '2026-002', cliente: 'Marcos Almeida', aparelho: 'iPhone 11', emoji: '🍏', senha: 'Sem senha', valor: 450.00, dataEntrada: new Date().toISOString().split('T')[0], prazo: new Date().toISOString().split('T')[0], defeito: 'Bateria descarregando rápido', observacoes: 'Bateria atual está em 71% de saúde. Substituir por peça premium e efetuar ciclo.', status: 'manutencao' }
+    ];
+    
+    processarERenderizarDados(localDatabaseMock);
+});
