@@ -4,12 +4,13 @@ import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, or
 
 // CONFIGURAÇÃO DO SERVIDOR DO FIREBASE
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY_AQUI",
-    authDomain: "SEU_AUTH_DOMAIN_AQUI",
-    projectId: "SEU_PROJECT_ID_AQUI",
-    storageBucket: "SEU_STORAGE_BUCKET_AQUI",
-    messagingSenderId: "SEU_SENDER_ID_AQUI",
-    appId: "SEU_APP_ID_AQUI"
+  apiKey: "AIzaSyDAk_m03l6hZcVs7uO25cZFnHQWwkTNgCQ",
+  authDomain: "assistenciaana-b65c9.firebaseapp.com",
+  projectId: "assistenciaana-b65c9",
+  storageBucket: "assistenciaana-b65c9.firebasestorage.app",
+  messagingSenderId: "556113314810",
+  appId: "1:556113314810:web:4bf458e0897904bd1d1a43",
+  measurementId: "G-3YFX45LWJB"
 };
 
 const app = initializeApp(firebaseConfig);
